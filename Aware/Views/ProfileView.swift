@@ -65,6 +65,16 @@ struct ProfileView: View {
             }
             .background(Color.appBackground)
             .navigationTitle("Profile")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        SettingsView()
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityLabel("Settings")
+                }
+            }
             .sheet(isPresented: $showEdit) {
                 NavigationStack {
                     ProfileFormView(profile: profile)

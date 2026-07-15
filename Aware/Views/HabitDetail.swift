@@ -9,6 +9,8 @@ struct HabitDetailView: View {
     let habit: Habit
 
     @State private var confirmDelete = false
+    @State private var reminderOn = false
+    @State private var reminderTime = Calendar.current.date(bySettingHour: 20, minute: 0, second: 0, of: .now) ?? .now
 
     var body: some View {
         ScrollView {
@@ -48,6 +50,20 @@ struct HabitDetailView: View {
                 }
                 .card()
 
+                VStack(alignment: .leading, spacing: 12) {
+                    Toggle(isOn: $reminderOn) {
+                        Label("Daily reminder", systemImage: "bell")
+                            .font(.body.weight(.medium))
+                            .foregroundStyle(Color.appInk)
+                    }
+                    if reminderOn {
+                        DatePicker("Time", selection: $reminderTime, displayedComponents: .hourAndMinute)
+                            .font(.subheadline)
+                            .foregroundStyle(Color.appMuted)
+                    }
+                }
+                .card()
+
                 Button(action: toggleToday) {
                     Label(
                         habit.isCompletedToday ? "Done today" : "Mark done for today",
@@ -80,9 +96,34 @@ struct HabitDetailView: View {
             titleVisibility: .visible
         ) {
             Button("Delete habit", role: .destructive) {
+                NotificationManager.cancelReminder(for: habit)
                 context.delete(habit)
                 dismiss()
             }
+        }
+        .onAppear {
+            reminderOn = habit.reminderTime != nil
+            reminderTime = habit.reminderTime ?? reminderTime
+        }
+        .onChange(of: reminderOn) { _, on in
+            applyReminder(enabled: on)
+        }
+        .onChange(of: reminderTime) { _, _ in
+            if reminderOn { applyReminder(enabled: true) }
+        }
+    }
+
+    private func applyReminder(enabled: Bool) {
+        if enabled {
+            habit.reminderTime = reminderTime
+            Task {
+                if await NotificationManager.requestAuthorization() {
+                    NotificationManager.scheduleReminder(for: habit)
+                }
+            }
+        } else {
+            habit.reminderTime = nil
+            NotificationManager.cancelReminder(for: habit)
         }
     }
 
@@ -133,6 +174,8 @@ struct HabitFormView: View {
     @State private var name = ""
     @State private var emoji = "✨"
     @State private var startDate = Date()
+    @State private var reminderOn = false
+    @State private var reminderTime = Calendar.current.date(bySettingHour: 20, minute: 0, second: 0, of: .now) ?? .now
 
     private let emojiOptions = ["✨", "🏃", "📖", "🧘", "💧", "🥗", "✍️", "😴", "🎸", "🧠", "☀️", "🚶"]
 
@@ -168,6 +211,16 @@ struct HabitFormView: View {
                 }
                 .padding(.vertical, 4)
             }
+            Section {
+                Toggle("Daily reminder", isOn: $reminderOn)
+                if reminderOn {
+                    DatePicker("Time", selection: $reminderTime, displayedComponents: .hourAndMinute)
+                }
+            } header: {
+                Text("Reminder")
+            } footer: {
+                Text("A gentle nudge, every day, to keep the streak alive.")
+            }
         }
         .navigationTitle("New habit")
         .navigationBarTitleDisplayMode(.inline)
@@ -187,7 +240,20 @@ struct HabitFormView: View {
     }
 
     private func save() {
-        context.insert(Habit(name: trimmedName, emoji: emoji, startDate: startDate))
+        let habit = Habit(
+            name: trimmedName,
+            emoji: emoji,
+            startDate: startDate,
+            reminderTime: reminderOn ? reminderTime : nil
+        )
+        context.insert(habit)
+        if reminderOn {
+            Task {
+                if await NotificationManager.requestAuthorization() {
+                    NotificationManager.scheduleReminder(for: habit)
+                }
+            }
+        }
         dismiss()
     }
 }

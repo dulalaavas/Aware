@@ -43,14 +43,20 @@ final class Habit {
     var emoji: String
     var startDate: Date
     var createdAt: Date
+    /// Stable identity used by widgets and notification identifiers.
+    var uuid: UUID = UUID()
+    /// Time of day for the daily reminder; nil means no reminder.
+    var reminderTime: Date?
     @Relationship(deleteRule: .cascade, inverse: \HabitCompletion.habit)
     var completions: [HabitCompletion] = []
 
-    init(name: String, emoji: String, startDate: Date = .now) {
+    init(name: String, emoji: String, startDate: Date = .now, reminderTime: Date? = nil) {
         self.name = name
         self.emoji = emoji
         self.startDate = startDate
         self.createdAt = .now
+        self.uuid = UUID()
+        self.reminderTime = reminderTime
     }
 
     var completedDays: Set<Date> {
@@ -161,6 +167,17 @@ enum Mood: String, Codable, CaseIterable, Identifiable {
         case .neutral: return "Neutral"
         case .sad: return "Sad"
         case .gloomy: return "Gloomy"
+        }
+    }
+
+    /// Numeric value for charting: gloomy = 1 … delighted = 5.
+    var score: Int {
+        switch self {
+        case .gloomy: return 1
+        case .sad: return 2
+        case .neutral: return 3
+        case .happy: return 4
+        case .delighted: return 5
         }
     }
 }

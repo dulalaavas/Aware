@@ -3,6 +3,7 @@ import SwiftUI
 struct MainTabView: View {
     let profile: UserProfile
 
+    @EnvironmentObject private var router: AppRouter
     @State private var selection: AppTab = .home
     @State private var showCreate = false
 
@@ -41,6 +42,12 @@ struct MainTabView: View {
         }
         .sheet(isPresented: $showCreate) {
             CreateSheet()
+        }
+        .onChange(of: router.capturePending) { _, pending in
+            // Widget deep link: jump home so the quick-capture field can take focus.
+            if pending {
+                selection = .home
+            }
         }
     }
 }

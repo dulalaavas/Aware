@@ -1,63 +1,90 @@
-# Aware — Be aware with yourself
+# Aware
 
-An iOS app to track what you did all day: daily habits with streaks, how you're feeling (and why), and a journal of the small moments that make up your days. Built with SwiftUI + SwiftData from the handwritten design notes and user stories.
+**Be aware with yourself.**
 
-## Requirements
+Aware is an iOS app for noticing your own days: the habits you keep, the moods you move through, and the small moments that would otherwise slip away. Everything stays on your device — no account, no server, no feed.
 
-- **Xcode 16 or newer** (free, from the Mac App Store). This Mac currently has only Command Line Tools, so install Xcode first.
-- iOS 17+ (simulator or iPhone).
+It started as a handwritten sketch in a notebook, and the app still follows that page.
 
-## Run it
+## What Aware does
 
-1. Install Xcode from the Mac App Store, open it once, and let it install the iOS platform when prompted.
-2. Double-click `Aware.xcodeproj`.
-3. Pick an iPhone simulator in the toolbar and press **⌘R**.
+### 🏠 Home
+Your whole day on one screen:
+- **Habits** — your daily habits with 🔥 streak counts and a one-tap circle to mark today done. Shows three, expands in place to show them all.
+- **Mood** — five faces (Delighted, Happy, Neutral, Sad, Gloomy). Pick one, say *why*, done. One mood per day; you can change your mind.
+- **What happened?** — a quick-capture box for moments as they happen. Each capture is stamped with its time and saved to that day's journal (*1 PM — "Saw a monkey riding an elephant"*).
 
-To run on your real iPhone: connect it, select it as the run destination, then in the project settings → *Signing & Capabilities* choose your personal team (a free Apple ID works).
+### 📓 Journal
+Day-by-day entries with a title, your thoughts, up to 4 photos, and a recorded voice note. Quick notes from Home land here too. Every entry can be edited or deleted later.
 
-## What's inside (mapped to the notebook)
+### 🗓 Calendar
+A month view of your life in the app. Days with logs get a dot; tap any day to see the mood you felt, the habits you completed, and everything you wrote.
 
-| Notebook idea | Where it lives |
+### 📱 Home-screen widgets
+- **Habit streaks** — small (your top streak) or medium (up to three habits). Tap the circle to mark a habit done *right from the home screen*.
+- **Quick capture** — one tap opens Aware with the "What happened?" field ready to type.
+
+### 🔔 Habit reminders
+Each habit can have a daily reminder at a time you choose — a gentle nudge to keep the streak alive. Set it when creating a habit or from the habit's page.
+
+### 📈 Mood history
+A 30-day mood line, an all-time breakdown of how often you feel each way, and your most common mood. Reachable from the mood card on Home or from Settings.
+
+### 🔒 Face ID lock
+Turn on app lock in Settings and Aware asks for Face ID (or your passcode) every time it opens. Your journal is yours.
+
+### 👤 Profile & Settings
+A local profile — name, photo, email, birthday, gender — with your totals (habits, entries, moods). The gear opens Settings: app lock, notification settings, mood history, and about.
+
+## Design
+
+Calm minimalism: warm ivory background, deep sage green, a soft ember flame for streaks, serif display headings. Full light **and** dark mode. SF Symbols for interface icons; emoji where they belong — as moods and habit icons you pick yourself.
+
+## Tech
+
+| | |
 |---|---|
-| Home page: habits with streaks | Home tab → Habits card; shows 3, "Show all" expands the rest in place (v1.1) |
-| Mood emoji row + "(why?)" | Home tab → Mood card (Delighted / Happy / Neutral / Sad / Gloomy) |
-| "What happened?" quick capture, saved on the day | Home tab → bottom card; entries land in the Journal grouped by day with their time (1 PM → "Saw a monkey riding an elephant") |
-| Bottom bar: Home, Calendar, Create (+), Journal, Profile | The tab bar; the middle **+** opens the create sheet (v1.1: Calendar replaced Habits) |
-| Month calendar with "logs of the day" (v1.1) | Calendar tab → pick a day to see its mood, habits done, and journal entries; days with logs get a dot |
-| Journals should be editable (v1.1) | Open any entry → pencil button |
-| Profile: name, picture, email, birthday, gender | Onboarding on first launch; editable from the Profile tab |
-| Add habits: name, start date | Home tab → **+** on the Habits card (icon picker + 30-day history in the detail view) |
-| Journal: title, text, photos, voice recording | Journal tab → compose (up to 4 photos, one voice note) |
+| UI | SwiftUI (iOS 17+) |
+| Data | SwiftData, stored in an App Group container shared with the widgets |
+| Widgets | WidgetKit + App Intents (interactive check-off) |
+| Charts | Swift Charts |
+| Reminders | UserNotifications |
+| App lock | LocalAuthentication (Face ID / Touch ID / passcode) |
+| Audio | AVFoundation voice notes |
+
+No third-party dependencies.
+
+## Running it
+
+1. Open `Aware.xcodeproj` in **Xcode 16 or newer**.
+2. Pick an iPhone simulator and press **⌘R**.
+3. To try the widgets: long-press the simulator/device home screen → **+** → search "Aware".
+
+For a real iPhone, select your device and set your team under *Signing & Capabilities* for **both** targets (Aware and AwareWidgetsExtension). The App Group `group.com.aavash.aware` lets the widgets read your data.
 
 ## Project layout
 
 ```
 Aware/
-├── AwareApp.swift          — app entry + onboarding/main switch
-├── Models/Models.swift     — SwiftData models: profile, habit, journal, mood
-├── Theme/Theme.swift       — colors (light/dark), card style, avatar
-├── Audio/AudioServices.swift — voice note recorder + player
-└── Views/
-    ├── MainTabView.swift   — tab bar + create sheet
-    ├── HomeView.swift      — expandable habits card, mood card, quick capture
-    ├── CalendarView.swift  — month grid + logs of the selected day
-    ├── HabitDetail.swift   — habit stats/detail + add-habit form
-    ├── JournalView.swift   — day-grouped list, detail, compose/edit form
-    ├── MoodFormView.swift  — full mood logging form
-    └── ProfileView.swift   — profile, edit form, onboarding
+├── Aware/                    — the app
+│   ├── AwareApp.swift        — entry point, deep links, app lock, widget refresh
+│   ├── Services/             — notifications, Face ID lock
+│   ├── Audio/                — voice note recorder + player
+│   └── Views/                — Home, Calendar, Journal, Habits, Mood, Profile, Settings
+├── Shared/                   — compiled into app AND widgets
+│   ├── Models.swift          — SwiftData models (profile, habit, journal, mood)
+│   ├── SharedStore.swift     — App Group data container
+│   └── Theme.swift           — colors, cards, avatar
+└── AwareWidgets/             — widget extension (streaks + quick capture)
 ```
 
-Everything is stored locally on the device with SwiftData — no account or server needed.
+## Roadmap ideas
 
-## Deliberate changes from the notes
+- Video attachments in journal entries
+- Weekly reflection summaries
+- Lock screen widgets
+- iCloud sync
 
-- **No password.** There's no server, so storing a password would add risk without adding security. If you later want app privacy, Face ID lock is the right tool; if you want sync/login, that's a backend project.
-- **No video attachments yet.** Photos + voice notes are in; video is a good v1.1 item.
-- **No home-screen widget yet.** It needs a second Xcode target — easy to add once Xcode is installed. Good candidates: today's habit checklist, or a "what happened?" quick-capture button.
+---
 
-## Ideas for next
-
-- Home-screen widgets (habit streaks, quick capture)
-- Reminders/notifications for habits
-- Mood history chart
-- Face ID app lock
+*Built from a paper sketch. ✏️*

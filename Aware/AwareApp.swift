@@ -1,20 +1,51 @@
 import SwiftUI
 import SwiftData
+import WidgetKit
+
+/// Cross-view signals, e.g. the quick-capture deep link from the widget.
+final class AppRouter: ObservableObject {
+    @Published var capturePending = false
+}
 
 @main
 struct AwareApp: App {
+    @Environment(\.scenePhase) private var scenePhase
+    @StateObject private var router = AppRouter()
+    @StateObject private var appLock = AppLockController()
+
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .tint(.appAccent)
+            ZStack {
+                RootView()
+                if appLock.isLocked {
+                    LockScreenView(appLock: appLock)
+                        .transition(.opacity)
+                }
+            }
+            .environmentObject(router)
+            .tint(.appAccent)
+            .onOpenURL { url in
+                if url.host == "capture" {
+                    router.capturePending = true
+                }
+            }
+            .task {
+                appLock.lockIfNeeded()
+                await appLock.unlock()
+            }
         }
-        .modelContainer(for: [
-            UserProfile.self,
-            Habit.self,
-            HabitCompletion.self,
-            JournalEntry.self,
-            MoodEntry.self
-        ])
+        .modelContainer(SharedStore.container)
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .background:
+                appLock.lockIfNeeded()
+                WidgetCenter.shared.reloadAllTimelines()
+            case .active:
+                Task { await appLock.unlock() }
+            default:
+                break
+            }
+        }
     }
 }
 

@@ -10,6 +10,8 @@ struct HomeView: View {
     @Query(sort: \MoodEntry.createdAt, order: .reverse) private var moods: [MoodEntry]
     @Query(sort: \JournalEntry.createdAt, order: .reverse) private var entries: [JournalEntry]
 
+    @EnvironmentObject private var router: AppRouter
+    @FocusState private var quickCaptureFocused: Bool
     @State private var quickText = ""
     @State private var showAddHabit = false
     @State private var habitsExpanded = false
@@ -30,6 +32,19 @@ struct HomeView: View {
             .sheet(isPresented: $showAddHabit) {
                 NavigationStack { HabitFormView() }
             }
+            .onChange(of: router.capturePending) { _, pending in
+                if pending { consumeCaptureRequest() }
+            }
+            .onAppear {
+                if router.capturePending { consumeCaptureRequest() }
+            }
+        }
+    }
+
+    private func consumeCaptureRequest() {
+        quickCaptureFocused = true
+        DispatchQueue.main.async {
+            router.capturePending = false
         }
     }
 
@@ -145,6 +160,7 @@ struct HomeView: View {
                 .foregroundStyle(Color.appInk)
             HStack(alignment: .bottom, spacing: 10) {
                 TextField("Capture this moment…", text: $quickText, axis: .vertical)
+                    .focused($quickCaptureFocused)
                     .lineLimit(1...4)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
@@ -251,9 +267,19 @@ struct MoodCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("How are you feeling?")
-                .font(.headline)
-                .foregroundStyle(Color.appInk)
+            HStack {
+                Text("How are you feeling?")
+                    .font(.headline)
+                    .foregroundStyle(Color.appInk)
+                Spacer()
+                NavigationLink {
+                    MoodHistoryView()
+                } label: {
+                    Image(systemName: "chart.xyaxis.line")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .accessibilityLabel("Mood history")
+            }
 
             HStack(spacing: 0) {
                 ForEach(Mood.allCases) { mood in
