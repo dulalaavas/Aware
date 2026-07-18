@@ -1,0 +1,41 @@
+{
+  "name": "Aavash's Apps",
+  "identifier": "com.aavash.aware.source",
+  "sourceURL": "https://raw.githubusercontent.com/dulalaavas/Aware/main/source.json",
+  "apps": [
+    {
+      "name": "Aware",
+      "bundleIdentifier": "com.aavash.aware",
+      "developerName": "Aavash Dulal",
+      "subtitle": "Be aware with yourself",
+      "localizedDescription": "Track your daily habits with streaks, log how you feel and why, capture the small moments of your day, and see it all on a calendar. Everything stays on your device.",
+      "iconURL": "https://raw.githubusercontent.com/dulalaavas/Aware/main/Aware/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
+      "tintColor": "3A6351",
+      "category": "lifestyle",
+      "screenshots": [],
+      "version": "1.2",
+      "versionDate": "2026-07-18T00:00:00Z",
+      "downloadURL": "https://github.com/dulalaavas/Aware/releases/download/v1.2/Aware-1.2.ipa",
+      "size": 1410647,
+      "minOSVersion": "17.0",
+      "versions": [
+        {
+          "version": "1.2",
+          "date": "2026-07-18T00:00:00Z",
+          "localizedDescription": "Home-screen widgets (habit streaks + quick capture), daily habit reminders, mood history chart, Face ID app lock, and a new Settings screen.",
+          "downloadURL": "https://github.com/dulalaavas/Aware/releases/download/v1.2/Aware-1.2.ipa",
+          "size": 1410647,
+          "sha256": "a432936305646da10964efac3e750f49b0f3c1b8f0334af41518978c5df9fed4",
+          "minOSVersion": "17.0"
+        }
+      ],
+      "appPermissions": {
+        "entitlements": [],
+        "privacy": {
+          "NSMicrophoneUsageDescription": "Record voice notes for journal entries.",
+          "NSFaceIDUsageDescription": "Lock the app so only you can open it."
+        }
+      }
+    }
+  ]
+}

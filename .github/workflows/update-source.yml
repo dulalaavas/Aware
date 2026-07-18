@@ -1,0 +1,128 @@
+name: Update AltStore source
+
+# Runs whenever a GitHub Release is published with a tag like "v1.3",
+# and keeps source.json (the AltStore/SideStore/LiveContainer feed) in sync
+# so users get update notifications without you touching anything by hand.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to sync (e.g. v1.3)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  update-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          set -euo pipefail
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          VERSION="${TAG#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          ASSET_URL=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets \
+            --jq '.assets[] | select(.name | endswith(".ipa")) | .url')
+          ASSET_NAME=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets \
+            --jq '.assets[] | select(.name | endswith(".ipa")) | .name')
+          if [ -z "$ASSET_URL" ]; then
+            echo "No .ipa asset found on release $TAG" >&2
+            exit 1
+          fi
+          echo "asset_name=$ASSET_NAME" >> "$GITHUB_OUTPUT"
+          echo "download_url=https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/${ASSET_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Download IPA and compute hash/size
+        id: ipa
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release download "${{ steps.release.outputs.tag }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern "*.ipa" \
+            --output ipa-asset.ipa
+          SIZE=$(stat -c%s ipa-asset.ipa)
+          SHA=$(sha256sum ipa-asset.ipa | cut -d' ' -f1)
+          echo "size=$SIZE" >> "$GITHUB_OUTPUT"
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Update source.json
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          DOWNLOAD_URL: ${{ steps.release.outputs.download_url }}
+          SIZE: ${{ steps.ipa.outputs.size }}
+          SHA256: ${{ steps.ipa.outputs.sha256 }}
+          RELEASE_NOTES: ${{ github.event.release.body }}
+        run: |
+          set -euo pipefail
+          NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          python3 - "$VERSION" "$NOW" "$DOWNLOAD_URL" "$SIZE" "$SHA256" "$RELEASE_NOTES" <<'PYEOF'
+          import json, sys
+
+          version, now, download_url, size, sha256, notes = sys.argv[1:7]
+          size = int(size)
+          notes = notes.strip() or f"Aware {version}"
+
+          with open("source.json") as f:
+              data = json.load(f)
+
+          app = data["apps"][0]
+
+          # Skip if this version is already the latest recorded entry.
+          if app.get("version") == version:
+              print(f"source.json already at {version}; nothing to do")
+              sys.exit(0)
+
+          new_entry = {
+              "version": version,
+              "date": now,
+              "localizedDescription": notes,
+              "downloadURL": download_url,
+              "size": size,
+              "sha256": sha256,
+              "minOSVersion": app.get("minOSVersion", "17.0"),
+          }
+
+          # Newest first; drop any pre-existing entry for the same version.
+          app["versions"] = [v for v in app.get("versions", []) if v.get("version") != version]
+          app["versions"].insert(0, new_entry)
+
+          app["version"] = version
+          app["versionDate"] = now
+          app["downloadURL"] = download_url
+          app["size"] = size
+
+          with open("source.json", "w") as f:
+              json.dump(data, f, indent=2)
+              f.write("\n")
+
+          print(f"source.json updated to {version}")
+          PYEOF
+
+      - name: Commit and push
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- source.json; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add source.json
+          git commit -m "Update source.json for ${{ steps.release.outputs.tag }}"
+          git push
